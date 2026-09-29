@@ -2,6 +2,8 @@
 
 use Livewire\Component;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
+
 use App\Models\Students;
 use App\Models\Records;
 use App\Models\Violations;
@@ -13,13 +15,12 @@ new class extends Component {
 
     public $angle = 0;
 
-
     public string $sr_code = '';
     public $scanned = '';
     public string $student_name = '';
     public int $student_id = 0;
 
-    // Violation form fields (separate from scanner)
+    // Violation form fields
     public string $vio_sr_code = '';
     public string $vio_guard = '';
     public string $vio_location = '';
@@ -46,9 +47,11 @@ new class extends Component {
     public function violations()
     {
         $student = $this->students;
+
         if (!$student) {
             return collect();
         }
+
         return Records::with(['students', 'violations'])
             ->where('student_id', $student->student_id)
             ->get();
@@ -58,25 +61,43 @@ new class extends Component {
     public function suspensions()
     {
         $student = $this->students;
+
         if (!$student) {
             return collect();
         }
+
         return DB::table('suspensions')
             ->join('records', 'suspensions.record_id', '=', 'records.record_id')
             ->join('students', 'records.student_id', '=', 'students.student_id')
             ->where('students.student_id', $student->student_id)
             ->select('students.*', 'records.*', 'suspensions.*')
             ->get();
+    }
 
+    #[Computed]
+    public function suspension()
+    {
+        $student = $this->students;
+
+        if (!$student) {
+            return null;
+        }
+
+        return DB::table('suspensions')
+            ->join('records', 'suspensions.record_id', '=', 'records.record_id')
+            ->where('records.student_id', $student->student_id)
+            ->orderByDesc('suspensions.created_at')
+            ->first();
     }
 
     #[Computed]
     public function violation_list()
     {
-        return App\Models\Violations::with(['violation_descriptions'])
-            ->whereIn('violation_id', [1, 3, 5, 6, 21, 17, 16, 12, 9, 22])
+        return Violations::with(['violation_descriptions'])
+            ->whereIn('violation_id', [1, 3, 5, 6, 21, 17, 16, 12, 9,27])
             ->get();
     }
+
     public function consecutive_minor(int $record_id)
     {
         $record = DB::table('records')
@@ -90,12 +111,13 @@ new class extends Component {
             Suspensions::create([
                 'record_id' => $record_id,
                 'num_of_days_suspended' => 3,
+                'remaining_days' => 3,
             ]);
         }
     }
+
     public function record_suspension()
     {
-
         $set_a = [9];
         $set_b = [12];
         $set_c = [16, 17];
@@ -107,69 +129,50 @@ new class extends Component {
             ->where('sr_code', $this->vio_sr_code)
             ->where('violations.violation_id', $this->vio_violation_id)
             ->count();
+
         $record_id = Records::latest()->first()->record_id;
 
-        // Set A
-
         if (in_array($this->vio_violation_id, $set_a)) {
-            if ($record === 1) {
-                Suspensions::create([
-                    'record_id' => $record_id,
-                    'num_of_days_suspended' => 3,
-                ]);
-            } else {
-                Suspensions::create([
-                    'record_id' => $record_id,
-                    'num_of_days_suspended' => 4,
-                ]);
-            }
-        } elseif (in_array($this->vio_violation_id, $set_b)) {
-            if ($record === 1) {
-                Suspensions::create([
-                    'record_id' => $record_id,
-                    'num_of_days_suspended' => 5,
-                ]);
-            } else {
-                Suspensions::create([
-                    'record_id' => $record_id,
-                    'num_of_days_suspended' => 7,
-                ]);
-            }
-        } elseif (in_array($this->vio_violation_id, $set_c)) {
-            if ($record === 1) {
-                Suspensions::create([
-                    'record_id' => $record_id,
-                    'num_of_days_suspended' => 6,
-                ]);
-            } else {
-                Suspensions::create([
-                    'record_id' => $record_id,
-                    'num_of_days_suspended' => 8,
-                ]);
-            }
-        } elseif (in_array($this->vio_violation_id, $set_e)) {
-            if ($record === 1) {
-                Suspensions::create([
-                    'record_id' => $record_id,
-                    'num_of_days_suspended' => 9,
-                ]);
-            } else {
-                Suspensions::create([
-                    'record_id' => $record_id,
-                    'num_of_days_suspended' => 12,
-                ]);
-            }
-        }
 
+            Suspensions::create([
+                'record_id' => $record_id,
+                'num_of_days_suspended' => $record === 1 ? 3 : 4,
+                'remaining_days' => $record === 1 ? 3 : 4,
+            ]);
+
+        } elseif (in_array($this->vio_violation_id, $set_b)) {
+
+            Suspensions::create([
+                'record_id' => $record_id,
+                'num_of_days_suspended' => $record === 1 ? 5 : 7,
+                'remaining_days' => $record === 1 ? 5 : 7,
+            ]);
+
+        } elseif (in_array($this->vio_violation_id, $set_c)) {
+
+            Suspensions::create([
+                'record_id' => $record_id,
+                'num_of_days_suspended' => $record === 1 ? 6 : 8,
+                'remaining_days' => $record === 1 ? 6 : 8,
+            ]);
+
+        } elseif (in_array($this->vio_violation_id, $set_e)) {
+
+            Suspensions::create([
+                'record_id' => $record_id,
+                'num_of_days_suspended' => $record === 1 ? 9 : 12,
+                'remaining_days' => $record === 1 ? 9 : 12,
+            ]);
+        }
     }
 
     public function confirm_violation()
     {
         $this->validate([
-            'vio_sr_code' => 'required',
+            'vio_sr_code'      => 'required',
             'vio_violation_id' => 'required',
         ], [
-            'vio_sr_code.required' => 'SR-Code is required.',
+            'vio_sr_code.required'      => 'SR-Code is required.',
             'vio_violation_id.required' => 'Please select a violation.',
         ]);
 
@@ -181,6 +184,7 @@ new class extends Component {
                 message: 'SR-Code not found. Please check and try again.',
                 type: 'error'
             );
+
             return;
         }
 
@@ -194,34 +198,41 @@ new class extends Component {
             ->first();
 
         if (!$student) {
+
             $this->show_confirm = false;
+
             $this->dispatch(
                 'show-toast',
                 message: 'SR-Code not found.',
                 type: 'error'
             );
+
             return;
         }
 
         $newRecord = Records::create([
-            'student_id' => $student->student_id,
+            'student_id'   => $student->student_id,
             'violation_id' => (int) $this->vio_violation_id,
         ]);
-
 
         $this->consecutive_minor($newRecord->record_id);
         $this->record_suspension();
 
         $this->show_confirm = false;
-        $this->reset(['vio_sr_code', 'vio_violation_id', 'vio_guard', 'vio_notes', 'vio_location']);
+
+        $this->reset([
+            'vio_sr_code',
+            'vio_violation_id',
+            'vio_guard',
+            'vio_notes',
+            'vio_location'
+        ]);
+
         $this->dispatch(
             'show-toast',
             message: 'Violation recorded successfully.',
             type: 'success'
         );
-
-
-        // dd($count_records);
     }
 
     public function cancel_confirm()
@@ -229,472 +240,1225 @@ new class extends Component {
         $this->show_confirm = false;
     }
 
-    public function show_suspension()
-    {
+    public function show_suspension() {}
 
-    }
-    public function success_entry($value): void
+    #[On('success_entry')]
+    public function success_entry(?string $value): void
     {
+        if (!$value) {
+            return;
+        }
+
+        $this->sr_code = $value;
         $this->scanned = $value;
 
-        if ($this->student && !$this->isSuspended) {
+        if ($this->students && !$this->isSuspended) {
             $this->open();
         }
     }
 
-
-
     #[Computed]
     public function daysLeft()
     {
-        if (!$this->suspension) return 0;
+        if (!$this->suspension) {
+            return 0;
+        }
 
         $end = \Carbon\Carbon::parse($this->suspension->created_at)
             ->addDays($this->suspension->num_of_days_suspended);
 
-        return max(0, now()->startOfDay()->diffInDays($end->startOfDay(), false));
+        return max(
+            0,
+            now()->startOfDay()->diffInDays(
+                $end->startOfDay(),
+                false
+            )
+        );
     }
+
     #[Computed]
     public function isSuspended()
     {
-        if (!$this->suspension) return false;
+        if (!$this->suspension) {
+            return false;
+        }
 
         $end = \Carbon\Carbon::parse($this->suspension->created_at)
             ->addDays($this->suspension->num_of_days_suspended);
 
         return now()->lt($end);
     }
-   
 
     public function open()
     {
+        try {
 
-        GPIOService::move(18, 180);
-        $this->angle = 180;
+            GPIOService::move(18, 180);
+
+            $this->angle = 180;
+
+            $this->dispatch(
+                'show-toast',
+                message: 'Gate opened successfully.',
+                type: 'success'
+            );
+
+        } catch (\Exception $e) {
+
+            $this->dispatch(
+                'show-toast',
+                message: 'Failed to connect to Raspberry Pi.',
+                type: 'error'
+            );
+        }
     }
 };
 ?>
 
 <div class="container-fluid py-4" style="background:#f0efeb; min-height:100vh;">
 
-    <p class="fw-semibold mb-3" style="font-size:14px;">Student Information</p>
+    <p class="fw-semibold mb-3" style="font-size:14px;">
+        Student Information
+    </p>
 
-    {{-- ── MAIN LAYOUT: info left + violation panel right ── --}}
+    {{-- MAIN LAYOUT --}}
     <div class="row g-3 align-items-start">
 
-        {{-- ════════════════ LEFT SIDE ════════════════ --}}
+        {{-- LEFT SIDE --}}
         <div class="col-xl-8 d-flex flex-column gap-3">
 
-            {{-- ── TOP ROW: camera · student · records ── --}}
+            {{-- TOP ROW --}}
             <div class="row g-3">
 
-                {{-- CAMERA --}}
+                {{-- SCANNER --}}
                 <div class="col-md-4">
                     <div class="card border-0 rounded-4 shadow-sm h-100">
-                        <div
-                            class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3">
-                            <span class="fw-semibold" style="font-size:13px;">Live Camera Feed</span>
-                            <span class="badge rounded-pill bg-success" style="font-size:10px;">LIVE</span>
+
+                        <div class="card-header bg-white border-0 pt-3">
+                            <span class="fw-semibold" style="font-size:13px;">
+                                Student Scanner
+                            </span>
                         </div>
-                        <div class="card-body pt-2">
-                            <div class="rounded-3 overflow-hidden mb-3" style="background:#1c1c1e; height:180px;">
-                                <video id="video" style="width:100%; height:100%; object-fit:cover;" autoplay
-                                    playsinline muted></video>
-                            </div>
 
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <span class="text-muted" style="font-size:12px;">Entry Status:</span>
-                                <span class="badge rounded-pill px-3 py-1"
-                                    style="background:#dcfce7; color:#166534; font-size:11px;">Allowed</span>
-                            </div>
+                        <div class="card-body">
 
-                            <input id="result_data" class="form-control form-control-sm mb-1" placeholder="Scan SR-Code"
+                            <label class="text-muted mb-1 d-block"
+                                style="font-size:11px;">
+                                Scan SR-Code
+                            </label>
+
+                            <input
+                                id="result_data"
+                                class="form-control form-control-sm mb-2"
+                                placeholder="Scan SR-Code"
                                 wire:model.live="sr_code"
-                                style="font-family:monospace; background:#f5f4f0; border-color:#ddd;">
-                            <small class="text-muted" style="font-family:monospace; font-size:11px;">
-                                Detected: {{ $sr_code }}
+                                style="font-family:monospace;
+                                background:#f5f4f0;
+                                border-color:#ddd;">
+
+                            <small class="text-muted"
+                                style="font-family:monospace; font-size:11px;">
+                                Detected: {{ $sr_code ?: '—' }}
                             </small>
+
+                            {{-- ENTRY STATUS --}}
+                            <div class="mt-3">
+
+                                <span class="text-muted"
+                                    style="font-size:12px;">
+                                    Entry Status:
+                                </span>
+
+                                @if($this->students && $this->isSuspended)
+
+                                    <span class="badge rounded-pill ms-1"
+                                        style="background:#fee2e2;
+                                        color:#991b1b;
+                                        font-size:10px;">
+                                        SUSPENDED
+                                    </span>
+
+                                @elseif($this->students)
+
+                                    <span class="badge rounded-pill ms-1"
+                                        style="background:#dcfce7;
+                                        color:#166534;
+                                        font-size:10px;">
+                                        Allowed
+                                    </span>
+
+                                @else
+
+                                    <span class="badge rounded-pill ms-1"
+                                        style="background:#f3f4f6;
+                                        color:#6b7280;
+                                        font-size:10px;">
+                                        No Scan
+                                    </span>
+
+                                @endif
+
+                            </div>
+
+                            {{-- SUSPENSION DAYS --}}
+                            @if($this->students && $this->isSuspended)
+
+                                <div class="rounded-2 px-2 py-2 mt-2"
+                                    style="background:#fee2e2;
+                                    font-size:11px;
+                                    color:#991b1b;">
+
+                                    ⛔ {{ $this->daysLeft }}
+                                    day{{ $this->daysLeft !== 1 ? 's' : '' }}
+                                    remaining in suspension
+
+                                </div>
+
+                            @endif
+
                         </div>
                     </div>
                 </div>
 
                 {{-- STUDENT DETAILS --}}
                 <div class="col-md-5">
+
                     <div class="card border-0 rounded-4 shadow-sm h-100">
+
                         <div class="card-header bg-white border-0 pt-3">
-                            <span class="fw-semibold" style="font-size:13px;">Student Details</span>
+
+                            <span class="fw-semibold"
+                                style="font-size:13px;">
+                                Student Details
+                            </span>
+
                         </div>
+
                         <div class="card-body">
+
                             <div class="d-flex gap-3 align-items-start">
-                                <img src="{{ asset('storage/asset_pictures/people-default.svg') }}"
+
+                                <img
+                                    src="{{ asset('storage/asset_pictures/people-default.svg') }}"
                                     class="rounded-circle border flex-shrink-0"
-                                    style="width:72px; height:72px; object-fit:cover;" alt="Student photo">
+                                    style="width:72px;
+                                    height:72px;
+                                    object-fit:cover;"
+                                    alt="Student photo">
+
                                 <div class="flex-fill">
-                                    <label class="text-muted mb-1 d-block" style="font-size:11px;">Student Name</label>
+
+                                    <label class="text-muted mb-1 d-block"
+                                        style="font-size:11px;">
+                                        Student Name
+                                    </label>
+
                                     <div class="form-control form-control-sm bg-light mb-2 border-0"
                                         style="font-size:13px;">
+
                                         {{ $this->students->student_name ?? 'No Student Record' }}
+
                                     </div>
 
-                                    <label class="text-muted mb-1 d-block" style="font-size:11px;">SR-Code</label>
+                                    <label class="text-muted mb-1 d-block"
+                                        style="font-size:11px;">
+                                        SR-Code
+                                    </label>
+
                                     <div class="form-control form-control-sm bg-light mb-2 border-0"
-                                        style="font-size:13px; font-family:monospace;">
+                                        style="font-size:13px;
+                                        font-family:monospace;">
+
                                         {{ $this->sr_code ?: '—' }}
+
                                     </div>
 
-                                    <label class="text-muted mb-1 d-block" style="font-size:11px;">Program</label>
-                                    <div class="form-control form-control-sm bg-light border-0" style="font-size:13px;">
+                                    <label class="text-muted mb-1 d-block"
+                                        style="font-size:11px;">
+                                        Program
+                                    </label>
+
+                                    <div class="form-control form-control-sm bg-light border-0"
+                                        style="font-size:13px;">
+
                                         {{ $this->students->Programs->program ?? '—' }}
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
                     </div>
+
                 </div>
 
                 {{-- RECORDS SUMMARY --}}
                 <div class="col-md-3">
+
                     <div class="card border-0 rounded-4 shadow-sm h-100">
+
                         <div class="card-header bg-white border-0 pt-3">
-                            <span class="fw-semibold" style="font-size:13px;">Records</span>
+
+                            <span class="fw-semibold"
+                                style="font-size:13px;">
+                                Records
+                            </span>
+
                         </div>
+
                         <div class="card-body text-center">
+
                             <div class="py-3 border-bottom">
-                                <div class="text-danger fw-bold lh-1 mb-1" style="font-size:36px; letter-spacing:-2px;">
+
+                                <div class="text-danger fw-bold lh-1 mb-1"
+                                    style="font-size:36px;
+                                    letter-spacing:-2px;">
+
                                     {{ $this->violations->count() }}
+
                                 </div>
-                                <small class="text-muted">Violations</small>
+
+                                <small class="text-muted">
+                                    Violations
+                                </small>
+
                             </div>
+
                             <div class="py-3">
+
                                 <div class="fw-bold lh-1 mb-1"
-                                    style="font-size:36px; letter-spacing:-2px; color:#f59e0b;">
+                                    style="font-size:36px;
+                                    letter-spacing:-2px;
+                                    color:#f59e0b;">
+
                                     {{ $this->suspensions->count() }}
+
                                 </div>
-                                <small class="text-muted">Suspensions</small>
+
+                                <small class="text-muted">
+                                    Suspensions
+                                </small>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
 
-            </div>{{-- end top row --}}
+            </div>
 
-            {{-- ── VIOLATION RECORDS TABLE ── --}}
+            {{-- VIOLATION RECORDS --}}
             <div class="card border-0 rounded-4 shadow-sm">
+
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 pb-2">
-                    <span class="fw-semibold" style="font-size:13px;">Violation Records</span>
+
+                    <span class="fw-semibold"
+                        style="font-size:13px;">
+                        Violation Records
+                    </span>
+
                     @if($this->violations->count() > 0)
-                        <span class="badge rounded-pill bg-danger" style="font-size:11px;">
-                            {{ $this->violations->count() }} Violation{{ $this->violations->count() !== 1 ? 's' : '' }}
+
+                        <span class="badge rounded-pill bg-danger"
+                            style="font-size:11px;">
+
+                            {{ $this->violations->count() }}
+                            Violation{{ $this->violations->count() !== 1 ? 's' : '' }}
+
                         </span>
+
                     @endif
+
                 </div>
+
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+
+                    <table class="table table-hover align-middle mb-0"
+                        style="font-size:13px;">
+
                         <thead class="table-light">
+
                             <tr>
-                                <th class="text-muted fw-normal ps-3" style="font-size:11px;">#</th>
-                                <th class="text-muted fw-normal" style="font-size:11px;">Date</th>
-                                <th class="text-muted fw-normal" style="font-size:11px;">Type</th>
-                                <th class="text-muted fw-normal" style="font-size:11px;">Violation</th>
+
+                                <th class="text-muted fw-normal ps-3"
+                                    style="font-size:11px;">
+                                    #
+                                </th>
+
+                                <th class="text-muted fw-normal"
+                                    style="font-size:11px;">
+                                    Date
+                                </th>
+
+                                <th class="text-muted fw-normal"
+                                    style="font-size:11px;">
+                                    Type
+                                </th>
+
+                                <th class="text-muted fw-normal"
+                                    style="font-size:11px;">
+                                    Violation
+                                </th>
+
                             </tr>
+
                         </thead>
+
                         <tbody>
+
                             @forelse($this->violations as $record)
-                                                    <tr>
-                                                        <td class="text-muted ps-3" style="font-family:monospace; font-size:12px;">{{
-                                $loop->iteration }}</td>
-                                                        <td class="text-muted" style="font-family:monospace; font-size:12px;">{{
-                                $record->created_at }}</td>
-                                                        <td>
-                                                            @php $w = strtolower($record->violations->violation_weight ?? '') @endphp
-                                                            @if($w === 'minor')
-                                                                <span class="badge rounded-pill px-2"
-                                                                    style="background:#FEF9C3; color:#854D0E; font-size:10px;">MINOR</span>
-                                                            @elseif($w === 'major set a')
-                                                                <span class="badge rounded-pill px-2"
-                                                                    style="background:#FEE2E2; color:#991B1B; font-size:10px;">MAJOR Set A</span>
-                                                            @elseif($w === 'major set b')
-                                                                <span class="badge rounded-pill px-2"
-                                                                    style="background:#FCA5A5; color:#7F1D1D; font-size:10px;">MAJOR Set B</span>
-                                                            @elseif($w === 'major set c')
-                                                                <span class="badge rounded-pill px-2"
-                                                                    style="background:#F87171; color:#7F1D1D; font-size:10px;">MAJOR Set C</span>
-                                                            @elseif($w === 'major set d')
-                                                                <span class="badge rounded-pill px-2"
-                                                                    style="background:#EF4444; color:#FFFFFF; font-size:10px;">MAJOR Set D</span>
-                                                            @elseif($w === 'major set e')
-                                                                <span class="badge rounded-pill px-2"
-                                                                    style="background:#DC2626; color:#FFFFFF; font-size:10px;">MAJOR Set E</span>
-                                                            @else
-                                                                <span class="badge rounded-pill px-2"
-                                                                    style="background:#991B1B; color:#FFFFFF; font-size:10px;">MAJOR Set F</span>
-                                                            @endif
-                                                        </td>
-                                                        <td>{{ $record->violations->violation_name }}</td>
-                                                    </tr>
-                            @empty
+
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-5" style="font-size:13px;">
-                                        No violation records found.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {{-- Suspensions --}}
-            {{-- Suspensions --}}
-            <div class="card border-0 rounded-4 shadow-sm">
-                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 pb-2">
-                    <span class="fw-semibold" style="font-size:13px;">Suspensions</span>
-                    @if($this->suspensions->count() > 0)
-                        <span class="badge rounded-pill bg-warning text-dark" style="font-size:11px;">
-                            {{ $this->suspensions->count() }} Suspension{{ $this->suspensions->count() !== 1 ? 's' : '' }}
-                        </span>
-                    @endif
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" style="font-size:13px;">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="text-muted fw-normal ps-3" style="font-size:11px;">#</th>
-                                <th class="text-muted fw-normal" style="font-size:11px;">Date</th>
-                                <th class="text-muted fw-normal" style="font-size:11px;">Days Suspended</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($this->suspensions as $suspension)
-                                <tr>
-                                    <td class="text-muted ps-3" style="font-family:monospace; font-size:12px;">
+
+                                    <td class="text-muted ps-3"
+                                        style="font-family:monospace;
+                                        font-size:12px;">
+
                                         {{ $loop->iteration }}
+
                                     </td>
-                                    <td class="text-muted" style="font-family:monospace; font-size:12px;">
-                                        {{ $suspension->created_at }}
+
+                                    <td class="text-muted"
+                                        style="font-family:monospace;
+                                        font-size:12px;">
+
+                                        {{ $record->created_at }}
+
                                     </td>
+
                                     <td>
-                                        <span class="badge rounded-pill px-2"
-                                            style="background:#FEF9C3; color:#854D0E; font-size:10px;">
-                                            {{ $suspension->num_of_days_suspended }} days
-                                        </span>
+
+                                        @php
+                                            $w = strtolower(
+                                                $record->violations->violation_weight ?? ''
+                                            );
+                                        @endphp
+
+                                        @if($w === 'minor')
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#FEF9C3;
+                                                color:#854D0E;
+                                                font-size:10px;">
+                                                MINOR
+                                            </span>
+
+                                        @elseif($w === 'major set a')
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#FEE2E2;
+                                                color:#991B1B;
+                                                font-size:10px;">
+                                                MAJOR Set A
+                                            </span>
+
+                                        @elseif($w === 'major set b')
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#FCA5A5;
+                                                color:#7F1D1D;
+                                                font-size:10px;">
+                                                MAJOR Set B
+                                            </span>
+
+                                        @elseif($w === 'major set c')
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#F87171;
+                                                color:#7F1D1D;
+                                                font-size:10px;">
+                                                MAJOR Set C
+                                            </span>
+
+                                        @elseif($w === 'major set d')
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#EF4444;
+                                                color:#FFFFFF;
+                                                font-size:10px;">
+                                                MAJOR Set D
+                                            </span>
+
+                                        @elseif($w === 'major set e')
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#DC2626;
+                                                color:#FFFFFF;
+                                                font-size:10px;">
+                                                MAJOR Set E
+                                            </span>
+
+                                        @else
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#991B1B;
+                                                color:#FFFFFF;
+                                                font-size:10px;">
+                                                MAJOR Set F
+                                            </span>
+
+                                        @endif
+
                                     </td>
+
+                                    <td>
+                                        {{ $record->violations->violation_name }}
+                                    </td>
+
                                 </tr>
+
                             @empty
+
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-5" style="font-size:13px;">
-                                        No suspensions found.
+
+                                    <td colspan="4"
+                                        class="text-center text-muted py-5"
+                                        style="font-size:13px;">
+
+                                        No violation records found.
+
                                     </td>
+
                                 </tr>
+
                             @endforelse
+
                         </tbody>
+
                     </table>
+
                 </div>
+
             </div>
 
-        </div>{{-- end left side --}}
-
-        {{-- ════════════════ RIGHT SIDE — VIOLATION PANEL ════════════════ --}}
-        <div class="col-xl-4">
-            <div class="card border-0 rounded-4 shadow-sm h-100" style="border-left: 3px solid #ef4444 !important;">
+            {{-- SUSPENSIONS --}}
+            <div class="card border-0 rounded-4 shadow-sm"
+                wire:poll.5s>
 
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 pb-2">
+
+                    <span class="fw-semibold"
+                        style="font-size:13px;">
+                        Suspensions
+                    </span>
+
+                    @if($this->suspensions->count() > 0)
+
+                        <span class="badge rounded-pill bg-warning text-dark"
+                            style="font-size:11px;">
+
+                            {{ $this->suspensions->count() }}
+                            Suspension{{ $this->suspensions->count() !== 1 ? 's' : '' }}
+
+                        </span>
+
+                    @endif
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover align-middle mb-0"
+                        style="font-size:13px;">
+
+                        <thead class="table-light">
+
+                            <tr>
+
+                                <th class="text-muted fw-normal ps-3"
+                                    style="font-size:11px;">
+                                    #
+                                </th>
+
+                                <th class="text-muted fw-normal"
+                                    style="font-size:11px;">
+                                    Date
+                                </th>
+
+                                <th class="text-muted fw-normal"
+                                    style="font-size:11px;">
+                                    Days Suspended
+                                </th>
+
+                                <th class="text-muted fw-normal"
+                                    style="font-size:11px;">
+                                    Status
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            @forelse($this->suspensions as $suspension)
+
+                                <tr>
+
+                                    <td class="text-muted ps-3"
+                                        style="font-family:monospace;
+                                        font-size:12px;">
+
+                                        {{ $loop->iteration }}
+
+                                    </td>
+
+                                    <td class="text-muted"
+                                        style="font-family:monospace;
+                                        font-size:12px;">
+
+                                        {{ $suspension->created_at }}
+
+                                    </td>
+
+                                    <td>
+
+                                        <span class="badge rounded-pill px-2"
+                                            style="background:#FEF9C3;
+                                            color:#854D0E;
+                                            font-size:10px;">
+
+                                            {{ $suspension->num_of_days_suspended }}
+                                            days
+
+                                        </span>
+
+                                    </td>
+
+                                    <td>
+
+                                        @if($suspension->remaining_days > 0)
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#fee2e2;
+                                                color:#991b1b;
+                                                font-size:10px;">
+
+                                                {{ $suspension->remaining_days }}
+                                                day{{ $suspension->remaining_days !== 1 ? 's' : '' }}
+                                                left
+
+                                            </span>
+
+                                        @else
+
+                                            <span class="badge rounded-pill px-2"
+                                                style="background:#dcfce7;
+                                                color:#166534;
+                                                font-size:10px;">
+
+                                                Served
+
+                                            </span>
+
+                                        @endif
+
+                                    </td>
+
+                                </tr>
+
+                            @empty
+
+                                <tr>
+
+                                    <td colspan="4"
+                                        class="text-center text-muted py-5"
+                                        style="font-size:13px;">
+
+                                        No suspensions found.
+
+                                    </td>
+
+                                </tr>
+
+                            @endforelse
+
+                            <tr class="table-light fw-semibold">
+
+                                <td colspan="2"
+                                    class="text-end ps-3"
+                                    style="font-size:12px;">
+
+                                    Total Suspended Days
+
+                                </td>
+
+                                <td>
+
+                                    <span class="badge rounded-pill px-2"
+                                        style="background:#FEF9C3;
+                                        color:#854D0E;
+                                        font-size:10px;">
+
+                                        {{ $this->suspensions->sum('num_of_days_suspended') }}
+                                        days total
+
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    <span class="badge rounded-pill px-2"
+                                        style="background:#fee2e2;
+                                        color:#991b1b;
+                                        font-size:10px;">
+
+                                        {{ $this->suspensions->sum('remaining_days') }}
+                                        days left
+
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        {{-- RIGHT SIDE: VIOLATION PANEL --}}
+        <div class="col-xl-4">
+
+            <div class="card border-0 rounded-4 shadow-sm h-100"
+                style="border-left:3px solid #ef4444 !important;">
+
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 pb-2">
+
                     <div class="d-flex align-items-center gap-2">
+
                         <span
-                            style="width:8px; height:8px; border-radius:50%; background:#ef4444; display:inline-block; flex-shrink:0;"></span>
-                        <span class="fw-semibold" style="font-size:13px;">Record Violation</span>
+                            style="width:8px;
+                            height:8px;
+                            border-radius:50%;
+                            background:#ef4444;
+                            display:inline-block;
+                            flex-shrink:0;">
+                        </span>
+
+                        <span class="fw-semibold"
+                            style="font-size:13px;">
+                            Record Violation
+                        </span>
+
                     </div>
+
                     <span class="badge rounded-pill px-2"
-                        style="background:#fee2e2; color:#991b1b; font-size:10px;">Guard Panel</span>
+                        style="background:#fee2e2;
+                        color:#991b1b;
+                        font-size:10px;">
+
+                        Guard Panel
+
+                    </span>
+
                 </div>
 
                 <div class="card-body pt-2">
 
-                    {{-- Student strip (reflects scanner, read-only preview) --}}
-                    <div class="rounded-3 p-3 mb-3 d-flex align-items-center gap-2" style="background:#f5f4f0;">
+                    {{-- STUDENT STRIP --}}
+                    <div class="rounded-3 p-3 mb-3 d-flex align-items-center gap-2"
+                        style="background:#f5f4f0;">
+
                         <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 fw-semibold"
-                            style="width:38px; height:38px; background:#dbeafe; color:#1d4ed8; font-size:12px;">
+                            style="width:38px;
+                            height:38px;
+                            background:#dbeafe;
+                            color:#1d4ed8;
+                            font-size:12px;">
+
                             {{ strtoupper(substr($this->students->student_name ?? 'S', 0, 2)) }}
+
                         </div>
+
                         <div class="flex-fill overflow-hidden">
-                            <div class="fw-semibold text-truncate" style="font-size:13px;">
+
+                            <div class="fw-semibold text-truncate"
+                                style="font-size:13px;">
+
                                 {{ $this->students->student_name ?? 'No student scanned yet' }}
+
                             </div>
-                            <div class="text-muted text-truncate" style="font-size:11px; font-family:monospace;">
+
+                            <div class="text-muted text-truncate"
+                                style="font-size:11px;
+                                font-family:monospace;">
+
                                 {{ $sr_code ?: '—' }}
+
                             </div>
+
                         </div>
+
                         <div class="text-end flex-shrink-0">
-                            <div class="text-muted" style="font-size:10px;">Prior</div>
-                            <div class="fw-bold text-danger" style="font-size:15px;">{{ $this->violations->count() }}
+
+                            <div class="text-muted"
+                                style="font-size:10px;">
+                                Prior
                             </div>
+
+                            <div class="fw-bold text-danger"
+                                style="font-size:15px;">
+
+                                {{ $this->violations->count() }}
+
+                            </div>
+
                         </div>
+
                     </div>
 
-                    {{-- SR-Code — manual input, NOT tied to scanner --}}
+                    {{-- SR CODE --}}
                     <div class="mb-3">
-                        <label class="form-label text-muted mb-1" style="font-size:11px;">SR-Code of Violator</label>
-                        <input type="text"
+
+                        <label class="form-label text-muted mb-1"
+                            style="font-size:11px;">
+
+                            SR-Code of Violator
+
+                        </label>
+
+                        <input
+                            type="text"
                             class="form-control form-control-sm @error('vio_sr_code') is-invalid @enderror"
-                            wire:model.live="vio_sr_code" placeholder="Type SR-Code manually e.g. 23-77394"
+                            wire:model.live="vio_sr_code"
+                            placeholder="Type SR-Code manually e.g. 23-77394"
                             maxlength="8"
-                            style="font-family:monospace; background:#f5f4f0; border-color:#ddd; font-size:13px;">
+                            style="font-family:monospace;
+                            background:#f5f4f0;
+                            border-color:#ddd;
+                            font-size:13px;">
+
                         @error('vio_sr_code')
-                            <div class="invalid-feedback">{{ $message }}</div>
+
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+
                         @enderror
-                        <div class="form-text" style="font-size:10px; color:#aaa;">Independent from the scanner above.
+
+                        <div class="form-text"
+                            style="font-size:10px; color:#aaa;">
+
+                            Independent from the scanner above.
+
                         </div>
+
                     </div>
 
-                    {{-- Date & Time --}}
+                    {{-- DATE AND TIME --}}
                     <div class="row g-2 mb-3">
+
                         <div class="col-6">
-                            <label class="form-label text-muted mb-1" style="font-size:11px;">Date</label>
-                            <input type="date" class="form-control form-control-sm" id="vio-date"
-                                style="background:#f5f4f0; border-color:#ddd; font-size:13px;">
+
+                            <label class="form-label text-muted mb-1"
+                                style="font-size:11px;">
+
+                                Date
+
+                            </label>
+
+                            <input
+                                type="date"
+                                class="form-control form-control-sm"
+                                id="vio-date"
+                                style="background:#f5f4f0;
+                                border-color:#ddd;
+                                font-size:13px;">
+
                         </div>
+
                         <div class="col-6">
-                            <label class="form-label text-muted mb-1" style="font-size:11px;">Time</label>
-                            <input type="time" class="form-control form-control-sm" id="vio-time"
-                                style="background:#f5f4f0; border-color:#ddd; font-size:13px;">
+
+                            <label class="form-label text-muted mb-1"
+                                style="font-size:11px;">
+
+                                Time
+
+                            </label>
+
+                            <input
+                                type="time"
+                                class="form-control form-control-sm"
+                                id="vio-time"
+                                style="background:#f5f4f0;
+                                border-color:#ddd;
+                                font-size:13px;">
+
                         </div>
+
                     </div>
 
-                    {{-- Violation --}}
+                    {{-- VIOLATION --}}
                     <div class="mb-3">
-                        <label class="form-label text-muted mb-1" style="font-size:11px;">Violation</label>
-                        <select class="form-select form-select-sm @error('vio_violation_id') is-invalid @enderror"
+
+                        <label class="form-label text-muted mb-1"
+                            style="font-size:11px;">
+
+                            Violation
+
+                        </label>
+
+                        <select
+                            class="form-select form-select-sm @error('vio_violation_id') is-invalid @enderror"
                             wire:model.live="vio_violation_id"
-                            style="background:#f5f4f0; border-color:#ddd; font-size:13px;">
-                            <option value="">— Select violation —</option>
+                            style="background:#f5f4f0;
+                            border-color:#ddd;
+                            font-size:13px;">
+
+                            <option value="">
+                                — Select violation —
+                            </option>
+
                             @foreach($this->violation_list as $v)
+
                                 <option value="{{ $v->violation_id }}">
                                     {{ $v->violation_name }}
                                 </option>
+
                             @endforeach
+
                         </select>
+
                         @error('vio_violation_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
+
+                            <div class="invalid-feedback">
+                                {{ $message }}
+                            </div>
+
                         @enderror
 
-                        {{-- Description hint --}}
                         @php
-                            $selected = $this->violation_list->firstWhere('violation_id', $vio_violation_id);
+                            $selected = $this->violation_list
+                                ->firstWhere('violation_id', $vio_violation_id);
                         @endphp
+
                         @if($selected && $selected->violation_descriptions->first())
+
                             <div class="mt-1 px-2 py-2 rounded-2 d-flex gap-2 align-items-start"
-                                style="background:#fffbeb; border:0.5px solid #fcd34d; font-size:11px; color:#92400e; line-height:1.5;">
-                                <span style="flex-shrink:0;">ℹ️</span>
-                                <span>{{ $selected->violation_descriptions->first()->description }}</span>
+                                style="background:#fffbeb;
+                                border:0.5px solid #fcd34d;
+                                font-size:11px;
+                                color:#92400e;
+                                line-height:1.5;">
+
+                                <span style="flex-shrink:0;">
+                                    ℹ️
+                                </span>
+
+                                <span>
+                                    {{ $selected->violation_descriptions->first()->description }}
+                                </span>
+
                             </div>
+
                         @endif
+
                     </div>
 
-
-                    {{-- Actions --}}
+                    {{-- ACTIONS --}}
                     <div class="d-grid gap-2">
-                        <button type="button" wire:click="confirm_violation" wire:loading.attr="disabled"
+
+                        <button
+                            type="button"
+                            wire:click="confirm_violation"
+                            wire:loading.attr="disabled"
                             class="btn btn-danger btn-sm fw-semibold">
-                            <span wire:loading wire:target="confirm_violation"
-                                class="spinner-border spinner-border-sm me-1"></span>
+
+                            <span
+                                wire:loading
+                                wire:target="confirm_violation"
+                                class="spinner-border spinner-border-sm me-1">
+                            </span>
+
                             Submit violation
+
                         </button>
-                        <button type="button" class="btn btn-light btn-sm border"
+
+                        <button
+                            type="button"
+                            class="btn btn-light btn-sm border"
                             wire:click="$set('vio_sr_code', ''); $set('vio_violation_id', ''); $set('vio_guard', ''); $set('vio_notes', ''); $set('vio_location', '');">
+
                             Clear
+
                         </button>
+
                     </div>
 
                 </div>
+
             </div>
-        </div>{{-- end right panel --}}
 
-    </div>{{-- end main layout --}}
+        </div>
 
-    {{-- ── CONFIRMATION DIALOG ── --}}
+    </div>
+
+    {{-- CONFIRMATION DIALOG --}}
     @if($show_confirm)
-        <div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-            style="background:rgba(0,0,0,0.45); z-index:9999;">
-            <div class="card border-0 rounded-4 shadow-lg p-4" style="width:360px; max-width:95vw;">
+
+        <div
+            class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+            style="background:rgba(0,0,0,0.45);
+            z-index:9999;">
+
+            <div
+                class="card border-0 rounded-4 shadow-lg p-4"
+                style="width:360px; max-width:95vw;">
 
                 <div class="d-flex align-items-center gap-2 mb-3">
+
                     <span
-                        style="width:10px; height:10px; border-radius:50%; background:#ef4444; display:inline-block;"></span>
-                    <span class="fw-semibold" style="font-size:14px;">Confirm Violation</span>
+                        style="width:10px;
+                        height:10px;
+                        border-radius:50%;
+                        background:#ef4444;
+                        display:inline-block;">
+                    </span>
+
+                    <span class="fw-semibold"
+                        style="font-size:14px;">
+
+                        Confirm Violation
+
+                    </span>
+
                 </div>
 
-                <div class="rounded-3 p-3 mb-3" style="background:#f5f4f0;">
-                    <div class="text-muted mb-1" style="font-size:11px;">Student</div>
-                    <div class="fw-semibold" style="font-size:13px;">
+                <div class="rounded-3 p-3 mb-3"
+                    style="background:#f5f4f0;">
+
+                    <div class="text-muted mb-1"
+                        style="font-size:11px;">
+                        Student
+                    </div>
+
+                    <div class="fw-semibold"
+                        style="font-size:13px;">
+
                         {{ Students::where('sr_code', $vio_sr_code)->first()?->student_name ?? $vio_sr_code }}
+
                     </div>
 
-                    <div class="text-muted mt-2 mb-1" style="font-size:11px;">Violation</div>
-                    <div class="fw-semibold" style="font-size:13px;">
-                        {{ $this->violation_list->firstWhere('violation_id', $vio_violation_id)?->violation_name ?? '—' }}
+                    <div class="text-muted mt-2 mb-1"
+                        style="font-size:11px;">
+
+                        Violation
+
                     </div>
+
+                    <div class="fw-semibold"
+                        style="font-size:13px;">
+
+                        {{ $this->violation_list->firstWhere('violation_id', $vio_violation_id)?->violation_name ?? '—' }}
+
+                    </div>
+
                 </div>
 
-                <p class="text-muted mb-3" style="font-size:12px;">
-                    Are you sure you want to record this violation? This action cannot be undone.
+                <p class="text-muted mb-3"
+                    style="font-size:12px;">
+
+                    Are you sure you want to record this violation?
+                    This action cannot be undone.
+
                 </p>
 
                 <div class="d-grid gap-2">
-                    <button class="btn btn-danger btn-sm fw-semibold" wire:click="record_violation"
+
+                    <button
+                        class="btn btn-danger btn-sm fw-semibold"
+                        wire:click="record_violation"
                         wire:loading.attr="disabled">
-                        <span wire:loading wire:target="record_violation"
-                            class="spinner-border spinner-border-sm me-1"></span>
+
+                        <span
+                            wire:loading
+                            wire:target="record_violation"
+                            class="spinner-border spinner-border-sm me-1">
+                        </span>
+
                         Yes, record violation
+
                     </button>
-                    <button class="btn btn-light btn-sm border" wire:click="cancel_confirm">
+
+                    <button
+                        class="btn btn-light btn-sm border"
+                        wire:click="cancel_confirm">
+
                         Cancel
+
                     </button>
+
                 </div>
 
             </div>
+
         </div>
+
     @endif
 
-    {{-- ── TOAST ── --}}
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index:10000;">
-        <div id="lw-toast-inner" class="toast align-items-center border-0 text-white" role="alert" aria-live="assertive"
-            aria-atomic="true" style="min-width:280px;">
+    {{-- TOAST --}}
+    <div
+        class="position-fixed bottom-0 end-0 p-3"
+        style="z-index:10000;">
+
+        <div
+            id="lw-toast-inner"
+            class="toast align-items-center border-0 text-white"
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+            style="min-width:280px;">
+
             <div class="d-flex">
-                <div class="toast-body d-flex align-items-center gap-2" style="font-size:13px;" id="lw-toast-body">
+
+                <div
+                    class="toast-body d-flex align-items-center gap-2"
+                    style="font-size:13px;"
+                    id="lw-toast-body">
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+
+                <button
+                    type="button"
+                    class="btn-close btn-close-white me-2 m-auto"
+                    data-bs-dismiss="toast">
+                </button>
+
             </div>
+
         </div>
+
     </div>
 
 </div>
 
 @script
+
 <script>
+
     // Auto-fill date & time
     (function () {
+
         const now = new Date();
-        const pad = n => String(n).padStart(2, '0');
-        const dateEl = document.getElementById('vio-date');
-        const timeEl = document.getElementById('vio-time');
-        if (dateEl) dateEl.value = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-        if (timeEl) timeEl.value = pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+        const pad = n =>
+            String(n).padStart(2, '0');
+
+        const dateEl =
+            document.getElementById('vio-date');
+
+        const timeEl =
+            document.getElementById('vio-time');
+
+        if (dateEl) {
+
+            dateEl.value =
+                now.getFullYear()
+                + '-'
+                + pad(now.getMonth() + 1)
+                + '-'
+                + pad(now.getDate());
+
+        }
+
+        if (timeEl) {
+
+            timeEl.value =
+                pad(now.getHours())
+                + ':'
+                + pad(now.getMinutes());
+
+        }
+
     })();
 
+
+    // Livewire toast
     $wire.on('show-toast', ({ message, type }) => {
-        const el = document.getElementById('lw-toast-inner');
-        const body = document.getElementById('lw-toast-body');
-        if (!el || !body) return;
 
-        const isSuccess = type === 'success';
-        el.style.background = isSuccess ? '#22c55e' : '#ef4444';
-        body.innerHTML = (isSuccess ? '✅ ' : '❌ ') + message;
+        const el =
+            document.getElementById('lw-toast-inner');
 
-        const existing = bootstrap.Toast.getInstance(el);
-        if (existing) existing.dispose();
+        const body =
+            document.getElementById('lw-toast-body');
 
-        const toast = new bootstrap.Toast(el, { delay: 3500 });
+        if (!el || !body) {
+            return;
+        }
+
+        const isSuccess =
+            type === 'success';
+
+        el.style.background =
+            isSuccess
+                ? '#22c55e'
+                : '#ef4444';
+
+        body.innerHTML =
+            (isSuccess ? '✅ ' : '❌ ')
+            + message;
+
+        const existing =
+            bootstrap.Toast.getInstance(el);
+
+        if (existing) {
+            existing.dispose();
+        }
+
+        const toast =
+            new bootstrap.Toast(el, {
+                delay: 3500
+            });
+
         toast.show();
+
     });
+
+
+    // SR-Code scanner
+    const resultInput =
+        document.getElementById('result_data');
+
+    if (resultInput) {
+
+        resultInput.addEventListener('keydown', function (e) {
+
+            if (e.key === 'Enter') {
+
+                const val =
+                    e.target.value.trim();
+
+                if (val) {
+
+                    $wire.success_entry(val)
+                        .then(() => {
+
+                            $wire.set('sr_code', '');
+
+                            e.target.value = '';
+
+                        });
+
+                }
+
+            }
+
+        });
+
+    }
+
 </script>
+
 @vite(['resources/js/scanner.js'])
+
 @endscript

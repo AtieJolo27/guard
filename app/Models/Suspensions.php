@@ -11,6 +11,7 @@ class Suspensions extends Model
     protected $fillable = [
         'record_id',
         'num_of_days_suspended',
+        'remaining_days',
     ];
 
     public function records(){

@@ -11,4 +11,6 @@ Artisan::command('inspire', function () {
 
 // Schedule::command('suspensions:update-status')->daily();
 
+//Schedule::command('suspensions:update-status')->everyMinute();
+// routes/console.php
 Schedule::command('suspensions:update-status')->everyMinute();

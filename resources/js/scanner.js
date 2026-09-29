@@ -1,7 +1,7 @@
 import QrScanner from "qr-scanner";
 
-const videoElement  = document.getElementById("video");
-const resultLine    = document.getElementById("result_data");
+const videoElement = document.getElementById("video");
+const resultLine   = document.getElementById("result_data");
 
 let last_result = null;
 let qrcode      = null;
@@ -17,18 +17,20 @@ function startQrScanner() {
     (result) => {
       const data = result.data ?? result;
 
-      // Skip duplicates within cooldown
       if (data === last_result) return;
       last_result = data;
 
+      // Update the visible input
       resultLine.value = data;
       resultLine.dispatchEvent(new Event("input", { bubbles: true }));
       console.log("✅ QR Scanned:", data);
 
-      // Optional: ignore the same code for 1 second
-      setTimeout(() => {
-        last_result = null;
-      }, 1000);
+      // ── Call success_entry() so the servo + suspension check actually runs ──
+      if (window.Livewire) {
+        Livewire.dispatch('success_entry', { value: data });
+      }
+
+      setTimeout(() => { last_result = null; }, 1000);
     },
     {
       returnDetailedScanResult: true,
@@ -50,8 +52,6 @@ function stopQrScanner() {
   }
 }
 
-// Optional helpers you can export
 export { qrcode, startQrScanner, stopQrScanner };
 
-// Start immediately (or call startQrScanner() from your UI event)
 startQrScanner();

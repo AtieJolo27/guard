@@ -7,7 +7,7 @@
         <title>{{ $title ?? config('app.name') }}</title>
 
         <style>https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css</style>
-        @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/current_time.js','resources/js/scanner.js', 'resources/css/color.css'])
+        @vite(['resources/css/app.css', 'resources/js/app.js',])
 
         @livewireStyles
     </head>

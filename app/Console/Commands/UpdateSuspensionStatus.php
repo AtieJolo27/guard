@@ -13,8 +13,8 @@ class UpdateSuspensionStatus extends Command
 
     public function handle()
     {
-        $updated = Suspensions::where('num_of_days_suspended', '>', 0)
-            ->decrement('num_of_days_suspended');
+        $updated = Suspensions::where('remaining_days', '>', 0)
+            ->decrement('remaining_days');
 
         $this->info("Updated {$updated} suspension(s).");
     }
