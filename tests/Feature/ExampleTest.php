@@ -14,6 +14,25 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertRedirect('/login');
+    }
+
+    public function test_violations_requires_login(): void
+    {
+        $this->get('/violations')->assertRedirect('/login');
+    }
+
+    public function test_login_page_is_available(): void
+    {
+        $this->get('/login')->assertOk();
+    }
+
+    public function test_logout_clears_guard_session(): void
+    {
+        $this->withSession(['guard_id' => 1, 'guard_name' => 'Test Guard'])
+            ->get('/guard/logout')
+            ->assertRedirect('/login')
+            ->assertSessionMissing('guard_id')
+            ->assertSessionMissing('guard_name');
     }
 }

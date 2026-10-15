@@ -21,12 +21,13 @@ new class extends Component {
 
         $guard = Guards::where('email', $this->email)->first();
 
-        if (!$guard || $this->password !== $guard->password) {
+        if (!$guard || !Hash::isHashed($guard->password) || !Hash::check($this->password, $guard->password)) {
 
             $this->addError('email', 'Invalid email or password.');
             return;
         }
 
+        Session::regenerate();
         Session::put('guard_id', $guard->guard_id);
         Session::put('guard_name', $guard->name);
         Session::put('guard_email', $guard->email);

@@ -12,4 +12,11 @@ class Guards extends Model
         'email',
         'password',
     ];
+
+    protected $hidden = ['password'];
+
+    protected function casts(): array
+    {
+        return ['password' => 'hashed'];
+    }
 }
