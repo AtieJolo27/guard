@@ -1,0 +1,15 @@
+HTTP/1.1 200 OK
+Host: 127.0.0.1:8000
+Connection: close
+X-Powered-By: PHP/8.3.29
+Content-Type: text/html; charset=utf-8
+Cache-Control: no-store, private
+Date: Thu, 15 Oct 2026 03:45:37 GMT
+Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-bm06dqhwGhyBWjsnHa5vIcjdaf0wvLWeylalVJ4f' http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline' http://localhost:* http://127.0.0.1:*; img-src 'self' data:; font-src 'self' data: http://localhost:* http://127.0.0.1:*; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Set-Cookie: XSRF-TOKEN=eyJpdiI6ImtsQzVWTXRsSTlJSHgvSXlxeFV1a2c9PSIsInZhbHVlIjoiM0VYVnFqUVlObnpONjNaV1ZkWG5MRDQ2OFQvcmdqQnZpa3p4NndXY1N3c1Q2c2E5cWw2OXpGNVZYY2wzMCtzRTA5Rm5HRkprYmtiRVRaS0Y1SzJ0VklpT2YxVjRXWDF3YTkyUkVRQmlWMlFxaHRrNU9ZTTIxaXBYZzlvdTRXdDUiLCJtYWMiOiJjN2Y5OGE1MDk3MDJiMTU1ZjUyMzViZDExMjU4M2IxNzhlMzZkZGZkY2EwNmI1NDk5YTRhNjVhZWJhYjhkNWJlIiwidGFnIjoiIn0%3D; expires=Thu, 15 Oct 2026 05:45:37 GMT; Max-Age=7200; path=/; samesite=lax
+Set-Cookie: laravel-session=eyJpdiI6IjE2anpnZzg5RW85czBzR0t2VzdlSUE9PSIsInZhbHVlIjoiOStnT2UzN3h6dk9sdUhMR3FhRXV6VUJEUUZJS05ZSHhKYWIya2tQRVBaUThVMDl2Q1hOMGlMWWVlVC9yb3FPUWJzZ0lnY0gwdDh2dnFJMFJwRUlRN1RuTVJhT0lYT2FHOEwvZkVyOWk1S2N0SDlNQm5aK0ZPWEFCU1BSSlVUVW8iLCJtYWMiOiJiMjM2MDYwNjdmMmJlMjk0OTM2M2U3NjU1NmNlZDM5MTJmMmVhODY2MWYwYmYxZDQzMjFlMTk1ODQ2ZmY3MzkxIiwidGFnIjoiIn0%3D; expires=Thu, 15 Oct 2026 05:45:37 GMT; Max-Age=7200; path=/; httponly; samesite=lax
+
