@@ -1,0 +1,9 @@
+# The application must be served from public/. Deny access to source files,
+# credentials, logs, tests, templates and generated artifacts at project root.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(?!public(?:/|$)) - [F,L]
+</IfModule>
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>

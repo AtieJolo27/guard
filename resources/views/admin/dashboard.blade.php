@@ -1,0 +1,17 @@
+<x-layouts.app>
+<div class="dashboard-content admin-dashboard"><h1 class="sr-only">Discipline Office Dashboard</h1><div class="stats-grid dashboard-summary" style="--campus-image: url('{{ asset('pablo-borbon.jpg') }}')">
+@foreach([
+['Pending Cases', $stats['pending'], 'Violations awaiting review or student response.', 'clock', ['pending'=>'1']],
+['Recorded Violations', $stats['confirmed'], 'Confirmed violations with completed records.', 'check', ['status'=>'Confirmed']],
+['Notices Sent', $stats['notices'], 'Student notices accepted by the mail service.', 'mail', ['status'=>'Meeting Scheduled']],
+['Major Cases', $stats['major'], 'Confirmed major violation cases.', 'alert', ['classification'=>'Major', 'status'=>'Confirmed']]
+] as [$label, $value, $description, $icon, $filters])
+<a class="stat-card" href="{{ route('admin.cases.index', $filters) }}"><span class="stat-icon {{ $icon === 'check' ? 'dark' : '' }}"><x-office-icon :name="$icon"/></span><div><h2>{{ $label }}</h2><strong>{{ $value }}</strong><p>{{ $description }}</p></div></a>
+@endforeach</div>
+@include('admin.dashboard-insights')
+<section class="office-panel"><div class="panel-heading"><h2>Recent Violation Cases</h2><a href="{{ route('admin.cases.index') }}">View All Cases <x-office-icon name="arrow"/></a></div><div class="table-scroll"><table class="case-table"><thead><tr><th>Case ID</th><th>Student</th><th>Violation</th><th>Severity</th><th>Status</th><th>Date</th><th><span class="sr-only">Open case</span></th></tr></thead><tbody>
+@forelse($recent as $r)<tr><td>SV-{{ \Carbon\Carbon::parse($r->created_at)->format('Y') }}-{{ str_pad($r->id, 4, '0', STR_PAD_LEFT) }}</td><td><span class="case-student">{{ $r->student_name }}</span><span class="case-srcode">{{ $r->sr_code }}</span></td><td>{{ $r->violation_name }}</td><td><span class="badge {{ $r->classification === 'Major' ? 'major' : '' }}">{{ $r->classification }}</span></td><td><span class="badge {{ $r->status === 'Confirmed' ? 'confirmed' : '' }}">{{ $r->status }}</span></td><td>{{ \Carbon\Carbon::parse($r->incident_at)->format('M d, Y') }}</td><td><a class="row-link" href="{{ route('admin.cases.show', $r->id) }}" aria-label="Open case {{ $r->id }}">Open case</a></td></tr>
+@empty<tr><td colspan="7" class="empty-state"><x-office-icon name="folder"/><strong>No violation cases yet</strong><p>Reports submitted by guards will appear here for review.</p></td></tr>@endforelse
+</tbody></table></div></section>
+<section class="office-panel" id="deadline-monitoring"><div class="panel-heading"><h2>Deadline Monitoring</h2><a href="{{ route('admin.cases.index', ['status'=>'Meeting Scheduled']) }}">View All Deadlines <x-office-icon name="arrow"/></a></div><div class="deadline-grid"><a class="deadline-card" href="{{ route('admin.cases.index', ['due'=>'24h']) }}"><span class="stat-icon"><x-office-icon name="clock"/></span><strong>{{ $stats['due'] }}</strong><span>meetings due within<br>24 hours</span><x-office-icon name="arrow"/></a><a class="deadline-card" href="{{ route('admin.cases.index', ['status'=>'Meeting Scheduled']) }}"><span class="stat-icon"><x-office-icon name="mail"/></span><strong>{{ $stats['scheduled'] }}</strong><span>cases with<br>scheduled meetings</span><x-office-icon name="arrow"/></a><a class="primary-action" href="{{ route('admin.reports.create') }}"><x-office-icon name="plus"/> Record New Violation</a></div></section></div>
+</x-layouts.app>
